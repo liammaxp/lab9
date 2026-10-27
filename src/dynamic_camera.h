@@ -47,6 +47,37 @@ struct DynamicCamera {
         // lookahead) appropriately. Next,
         // set the camera center by offsetting the cameraUnadjustedCenter, combining lookAhead.
         // Finally update cameraUnadjustedCenter, but without lookahead.
+        const float playerX = 0.5f + camera.worldToWindowPercentDist(
+        trackedPosWorld - cameraUnadjustedCenter).x;
+        float targetLookahead = 0.f;
+        if (trackedVelocityWorld.x > 0.f) {
+            targetLookahead = lookAhead;
+        } 
+        else if (trackedVelocityWorld.x < 0.f) {
+            targetLookahead = -lookAhead;
+        }
+        const float targetLookaheadWorld =camera.windowPercentToWorldDist({targetLookahead, 0.f}).x;
+        lookaheadState += alpha * (targetLookaheadWorld - lookaheadState);
+        float deltaPercent = 0.f;
+        float damping = 1.f;
+        if (playerX < softZoneX.min) {
+            deltaPercent = playerX - softZoneX.min;
+        } 
+        else if (playerX > softZoneX.max) {
+            deltaPercent = playerX - softZoneX.max;
+        } 
+        else if (playerX < deadZoneX.min) {
+            deltaPercent = playerX - deadZoneX.min;
+            damping = alpha;
+        } 
+        else if (playerX > deadZoneX.max) {
+            deltaPercent = playerX - deadZoneX.max;
+            damping = alpha;
+        }
+        const float deltaWorld =camera.windowPercentToWorldDist({deltaPercent, 0.f}).x * damping;
+        const sf::Vector2f newUnadjustedCenter = cameraUnadjustedCenter + sf::Vector2f{deltaWorld, 0.f};
+        camera.setCameraCenter( newUnadjustedCenter + sf::Vector2f{lookaheadState, 0.f});
+        cameraUnadjustedCenter = newUnadjustedCenter;
     }
 
     float alpha;  // alpha to use for damping of camera position, *as well as* for smoothing of
